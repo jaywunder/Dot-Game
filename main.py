@@ -1,4 +1,4 @@
-from PIL import Image, ImageTk,GifImagePlugin
+from PIL import ImageTk, Image, ImageDraw
 from random import randint
 import tkinter as tk
 import pdb
@@ -7,6 +7,7 @@ import time
 WIDTH = 480; HEIGHT = 640
 Image.init()
 #pdb.set_trace()
+
 
 class DotGame(object):
     def __init__(self,dotAmount):
@@ -21,9 +22,6 @@ class DotGame(object):
         #Make Images Name    Type   Size           R   G   B
         self.img = Image.new("RGB",(WIDTH,HEIGHT),(220,220,200))
         self.dot = Image.new("RGB",(10   ,10)    ,(0  ,0  ,0  ))
-        self.img.save("image.gif","GIF")
-        #self.img.load()
-        #self.dot.load()
         self.coordList = [((0,1),(0,1))]
 
     def debug(self,state,x,y):
@@ -74,59 +72,83 @@ class DotGame(object):
                 self.failed += 1
                  
         #print(self.failed)
-        self.img.save("image.gif","GIF")
+        self.img.save("image.png","PNG")
 
         if self.failed != 0:
             self.main(self.failed)
 
-class Window(tk.Frame):
-    def __init__(self,master=None):
-        #self.img = img
-        tk.Frame.__init__(self,master,height=HEIGHT,width=WIDTH,relief='solid',borderwidth=3)
-        self.pack()
-        self.createWidgets()
-        self.lineState = False
 
-    def createWidgets(self):
-        self.img = Image.open('/Users/JacobWunder/Desktop/image.gif')
-        self.gameImage = ImageTk.PhotoImage(self.img)
-        
-        #self.canvas.create_image((WIDTH/2,HEIGHT/2),image=self.gameImage)
-        self.canvas = tk.Canvas(self,height=HEIGHT,width=WIDTH,image=self.gameImage)
+class Window(tk.Tk):
+    def __init__(self,master=None):
+        tk.Tk.__init__(self)
+        self.configure(bg='#DCDCC8')
+        self.wm_title("The Dot Game")
+        #self.frame = tk.Frame(self,master,height=HEIGHT,width=WIDTH,relief='solid',borderwidth=3)
+        self.lineState = False
+        #Make Image
+        self.img = Image.open(r'image.png')
+        self.width, self.height = self.img.size
+        #Canvas
+        self.canvas = tk.Canvas(self, highlightthickness=0, bd=0, bg='red', width=self.width, height=self.height)
         self.canvas.pack()
+
+        self.resetButton = tk.Button(text="Reset",command=self.reset)
+        self.newButton = tk.Button(text="New Game",command=self.new)
+        self.newButton.pack()
+        self.resetButton.pack()
         
-        self.lineImage = Image.new("RGB",(5,5),(256,256,256)) #(250,250,230)
-        self.gameImage.paste(self.lineImage,(10,10))
+        #Drawing format
+        self.draw = ImageDraw.Draw(self.img)
+        self.draw.rectangle([(WIDTH/2)-5,10,(WIDTH/2)+5,20],fill='red')
         
-        self.canvas.bind(sequence="<ButtonPress-1>",func=self.startLine)
-        tk.Frame.bind(sequence="<Motion>",func=self.drawLine)
-        
-    def startLine(self,event):
-        #self.gameImage.putpixel((event.x,event.y),0)
-        print((event.x,event.y))
-        self.canvas.update()
-        if self.lineState == False:
-            self.lineState = True
-            print(self.lineState)
-            
-        elif self.lineState == True:
-            self.lineState = False
-            self.gameImage.show()
-            print(self.lineState)
+        #creating and packing gameImage 
+        self.gameImage = ImageTk.PhotoImage(self.img)
+        self.canvas.create_image(self.width/2, self.height/2, image=self.gameImage)
+        #print(self.img.format, self.img.size, self.img.mode)
+        self.canvas.bind(sequence="<Button-1>",func=self.changeLineState)
+        self.canvas.bind(sequence="<Motion>",func=self.drawLine)
+        self.x0 = WIDTH/2
+        self.y0 = 15
         
     def drawLine(self,event):
-        while self.lineState == True:
-            self.img.paste(self.lineImage,(event.x,event.y))
-            
+        if self.lineState == True:
+            #self.draw.rectangle([event.x-2,event.y-2,event.x+2,event.y+2],fill='red')
+            self.draw.line([self.x0,self.y0,event.x,event.y],fill='red')
+            self.gameImage = ImageTk.PhotoImage(self.img)
+            self.canvas.create_image(self.width/2, self.height/2, image=self.gameImage)
+            self.x0 = event.x
+            self.y0 = event.y
 
-def windowLoop(window):
-    while True:
-        window.geometry('%dx%d+%d+%d' % (WIDTH+14,HEIGHT+14,100,100))
-        time.sleep(0.1)
-        
+    def reset(self):
+        self.img = Image.open(r'image.png')
+        self.draw = ImageDraw.Draw(self.img)
+        self.gameImage = ImageTk.PhotoImage(self.img)
+        self.canvas.create_image(self.width/2, self.height/2, image=self.gameImage)
+        self.draw.rectangle([(WIDTH/2)-5,10,(WIDTH/2)+5,20],fill='red')
+        self.canvas.bind(sequence="<Button-1>",func=self.changeLineState)
+        self.canvas.bind(sequence="<Motion>",func=self.drawLine)
+        self.x0 = WIDTH/2
+        self.y0 = 15
+
+    def new(self):
+        Game = DotGame(20)
+        self.destroy()
+        self.__init__()
+        #self.img = Image.open(r'image.png')
+        #self.gameImage = ImageTk.PhotoImage(self.img)
+        #self.canvas.create_image(self.width/2, self.height/2, image=self.gameImage)
+
+    def changeLineState(self,event):
+        if self.lineState == False:
+            self.lineState = True
+            self.draw.line([self.x0,self.y0,event.x,event.y],fill='red')
+
+        else:
+            self.lineState = False
+
+def run():
+    Window().mainloop()
 if __name__ == "__main__":
-    root = tk.Tk()
     Game = DotGame(20)
-    GameWindow = Window(master=root)
-    root.mainloop()
-    windowLoop(root)
+    run()
+
